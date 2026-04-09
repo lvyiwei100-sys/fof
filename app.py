@@ -159,6 +159,21 @@ def build_portfolio_table(pool: pd.DataFrame, weights: np.ndarray) -> pd.DataFra
     res["配置比例"] = weights
     res = res[res["配置比例"] > 0.0001].copy()
 
+    # 只保留 5 只基金：先保证三大类各至少 1 只，再按权重补足到 5 只
+    picked_idx = []
+    for cat in ["固收基金", "固收+基金", "权益基金"]:
+        cat_part = res[res["资产类别"] == cat].sort_values("配置比例", ascending=False)
+        if not cat_part.empty:
+            picked_idx.append(cat_part.index[0])
+
+    remaining = res.drop(index=picked_idx, errors="ignore").sort_values("配置比例", ascending=False)
+    need_more = max(0, 5 - len(picked_idx))
+    picked_idx.extend(remaining.head(need_more).index.tolist())
+
+    # 如果极端情况下不足 5 只，则用当前可用基金；如果超过 5 只，则按权重截断到 5 只
+    res = res.loc[picked_idx].sort_values("配置比例", ascending=False).head(5).copy()
+    res["配置比例"] = res["配置比例"] / res["配置比例"].sum()
+
     res["组合贡献收益"] = res["配置比例"] * res["近1年年化收益率"]
     res["组合贡献回撤"] = res["配置比例"] * res["近1年最大回撤"]
     res = res.sort_values(["资产类别", "配置比例"], ascending=[True, False])
@@ -238,6 +253,7 @@ def render():
         c3.metric("组合预期最大回撤", as_pct(port_dd))
 
         st.markdown("#### 推荐基金组合")
+        st.caption("当前策略每次固定输出 5 只基金（覆盖固收、固收+、权益三类）。")
         st.dataframe(
             table,
             use_container_width=True,
