@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-st.set_page_config(page_title="基金配置助手", page_icon="📊", layout="wide")
+st.set_page_config(page_title="FOF基金配置助手", page_icon="📊", layout="wide")
 
 CATEGORY_RULES = {
     "固收基金": [
@@ -55,11 +55,10 @@ def load_data(file: str) -> pd.DataFrame:
     clean = df[needed_cols].copy()
 
     def parse_percent_series(series: pd.Series) -> pd.Series:
-        # 最新数据按“百分比”口径给出：如 8 / 8% / 8.00% 都视为 8%，统一转为 0.08 参与计算
+        # 最新数据已是百分比口径，直接转数值使用（不再做缩放换算）
         text = series.astype(str).str.strip()
         text = text.str.replace("%", "", regex=False).str.replace("％", "", regex=False)
-        num = pd.to_numeric(text, errors="coerce")
-        return num / 100.0
+        return pd.to_numeric(text, errors="coerce")
 
     clean["近1年年化收益率"] = parse_percent_series(clean["近1年年化收益率"])
     clean["近1年最大回撤"] = parse_percent_series(clean["近1年最大回撤"])
@@ -191,7 +190,7 @@ def build_portfolio_table(pool: pd.DataFrame, weights: np.ndarray) -> pd.DataFra
 
 
 def as_pct(x: float) -> str:
-    return f"{x * 100:.2f}%"
+    return f"{x:.2f}%"
 
 
 def render():
@@ -206,7 +205,7 @@ def render():
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="main-title">📊基金配置助手</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">📊 FOF 基金配置助手</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="sub-title">基于有效前沿模拟，按“固收 / 固收+ / 权益”三类基金自动生成组合建议。</div>',
         unsafe_allow_html=True,
@@ -234,8 +233,8 @@ def render():
             step=0.01,
             format="%.2f",
         )
-        target_return = target_return_pct / 100.0
-        max_drawdown = max_drawdown_pct / 100.0
+        target_return = target_return_pct
+        max_drawdown = max_drawdown_pct
 
         st.caption("说明：预期收益率与回撤均使用 Excel 中“近1年”指标进行估算。")
         run = st.button("生成配置方案", type="primary", use_container_width=True)
