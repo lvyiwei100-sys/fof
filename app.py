@@ -53,8 +53,16 @@ def load_data(file: str) -> pd.DataFrame:
         raise ValueError(f"Excel 缺少必要字段: {', '.join(missing)}")
 
     clean = df[needed_cols].copy()
-    clean["近1年年化收益率"] = pd.to_numeric(clean["近1年年化收益率"], errors="coerce")
-    clean["近1年最大回撤"] = pd.to_numeric(clean["近1年最大回撤"], errors="coerce")
+
+    def parse_percent_series(series: pd.Series) -> pd.Series:
+        # 最新数据按“百分比”口径给出：如 8 / 8% / 8.00% 都视为 8%，统一转为 0.08 参与计算
+        text = series.astype(str).str.strip()
+        text = text.str.replace("%", "", regex=False).str.replace("％", "", regex=False)
+        num = pd.to_numeric(text, errors="coerce")
+        return num / 100.0
+
+    clean["近1年年化收益率"] = parse_percent_series(clean["近1年年化收益率"])
+    clean["近1年最大回撤"] = parse_percent_series(clean["近1年最大回撤"])
 
     clean = clean.dropna(subset=["近1年年化收益率", "近1年最大回撤", "基金简称", "基金代码"])
     clean = clean.drop_duplicates(subset=["基金代码"], keep="first")
@@ -210,8 +218,24 @@ def render():
         st.markdown("### 客户信息")
         name = st.text_input("姓名", placeholder="请输入客户姓名")
         age = st.number_input("年龄", min_value=18, max_value=100, value=35)
-        target_return = st.slider("预期收益率", min_value=0.01, max_value=0.20, value=0.08, step=0.005)
-        max_drawdown = st.slider("最大可承受回撤", min_value=-0.40, max_value=-0.01, value=-0.08, step=0.005)
+        target_return_pct = st.number_input(
+            "预期收益率（%）",
+            min_value=0.00,
+            max_value=50.00,
+            value=8.00,
+            step=0.01,
+            format="%.2f",
+        )
+        max_drawdown_pct = st.number_input(
+            "最大可承受回撤（%）",
+            min_value=-80.00,
+            max_value=0.00,
+            value=-8.00,
+            step=0.01,
+            format="%.2f",
+        )
+        target_return = target_return_pct / 100.0
+        max_drawdown = max_drawdown_pct / 100.0
 
         st.caption("说明：预期收益率与回撤均使用 Excel 中“近1年”指标进行估算。")
         run = st.button("生成配置方案", type="primary", use_container_width=True)
@@ -246,6 +270,9 @@ def render():
 
         port_r = float((table["配置比例"] * table["近1年年化收益率"]).sum())
         port_dd = float((table["配置比例"] * table["近1年最大回撤"]).sum())
+        display_table = table.copy()
+        for c in ["近1年年化收益率", "近1年最大回撤", "配置比例", "组合贡献收益", "组合贡献回撤"]:
+            display_table[c] = display_table[c].map(as_pct)
 
         c1, c2, c3 = st.columns(3)
         c1.metric("客户", name or "未命名客户")
@@ -255,16 +282,9 @@ def render():
         st.markdown("#### 推荐基金组合")
         st.caption("当前策略每次固定输出 5 只基金（覆盖固收、固收+、权益三类）。")
         st.dataframe(
-            table,
+            display_table,
             use_container_width=True,
             hide_index=True,
-            column_config={
-                "近1年年化收益率": st.column_config.NumberColumn(format="%.2f%%", help="展示为百分比"),
-                "近1年最大回撤": st.column_config.NumberColumn(format="%.2f%%"),
-                "配置比例": st.column_config.NumberColumn(format="%.2f%%"),
-                "组合贡献收益": st.column_config.NumberColumn(format="%.2f%%"),
-                "组合贡献回撤": st.column_config.NumberColumn(format="%.2f%%"),
-            },
         )
 
         st.markdown("#### 有效前沿（模拟）")
