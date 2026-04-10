@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-st.set_page_config(page_title="FOF基金配置助手", page_icon="📊", layout="wide")
+st.set_page_config(page_title="基金配置助手", page_icon="📊", layout="wide")
 
 CATEGORY_RULES = {
     "固收基金": [
@@ -206,7 +206,7 @@ def render():
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="main-title">📊 FOF 基金配置助手</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">📊基金配置助手</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="sub-title">基于有效前沿模拟，按“固收 / 固收+ / 权益”三类基金自动生成组合建议。</div>',
         unsafe_allow_html=True,
