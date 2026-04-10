@@ -55,10 +55,11 @@ def load_data(file: str) -> pd.DataFrame:
     clean = df[needed_cols].copy()
 
     def parse_percent_series(series: pd.Series) -> pd.Series:
-        # 最新数据已是百分比口径，直接转数值使用（不再做缩放换算）
+        # 直接读取百分比数据；若源值是小数形式(如 0.0369 表示 3.69%)，自动转成百分比点数
         text = series.astype(str).str.strip()
         text = text.str.replace("%", "", regex=False).str.replace("％", "", regex=False)
-        return pd.to_numeric(text, errors="coerce")
+        num = pd.to_numeric(text, errors="coerce")
+        return np.where(num.abs() <= 1.5, num * 100.0, num)
 
     clean["近1年年化收益率"] = parse_percent_series(clean["近1年年化收益率"])
     clean["近1年最大回撤"] = parse_percent_series(clean["近1年最大回撤"])
