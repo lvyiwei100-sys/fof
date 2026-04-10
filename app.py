@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-st.set_page_config(page_title="FOF基金配置助手", page_icon="📊", layout="wide")
+st.set_page_config(page_title="基金配置助手", page_icon="📊", layout="wide")
 
 CATEGORY_RULES = {
     "固收基金": [
